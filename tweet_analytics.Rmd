@@ -1,0 +1,203 @@
+---
+title: "Tweet Analysis"
+author: "Your Name"
+date: "Date"
+output:
+  slidy_presentation: default
+  html_document: default
+params:
+  file: "/path/to/your/file.csv"
+  words: !r c("enter", "your", "most", "important", "keywords", "here")
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(advertools)
+library(DT)
+library(viridis)
+knitr::opts_chunk$set(echo = FALSE, fig.width = 13, 
+                      fig.height = 5, fig.align = "center")
+
+tweets_df <- read_csv(params$file)
+#tweets_df <- read_csv("~/Downloads/sna_tweets_mayjunjul.csv")
+#tweets_df$`Tweet text` <- iconv(tweets_df$`Tweet text`, "ASCII", "UTF-8", "byte")
+tweets_df$date <- as.POSIXct(gsub(" \\+0000", "", tweets_df$time))
+tweets_df$month <- month(as.Date(tweets_df$time), label = TRUE)
+tweets_df$wday <- wday(as.Date(tweets_df$time), label = TRUE)
+```
+
+## Monthly & Weekday Tweets
+
+```{r monthly_tweets}
+monthly_tweets <- tweets_df %>% 
+  group_by(month) %>% 
+  summarise(tweets = n(), impressions = sum(impressions, na.rm = TRUE),
+            engagements = sum(engagements, na.rm = TRUE), 
+            eng_rate = round(engagements / impressions, digits = 3))
+
+datatable(monthly_tweets, rownames = FALSE, options = list(dom = "t"), 
+          width = "60%") %>% 
+  formatCurrency(columns = 1:4, currency = "", digits = 0) %>% 
+  formatPercentage(columns = 5, digits = 1)
+
+wday_tweets <- tweets_df %>% 
+  group_by(wday) %>% 
+  summarise(tweets = n())
+
+datatable(wday_tweets, rownames = F, options = list(dom = "t"), 
+          width = "60%") %>% 
+  formatCurrency(currency = "", digits = 0, columns = T)
+
+
+```
+
+* Tweet numbers are exact, metrics are approximated. They are the metrics of the tweets and not months.
+
+## Daily Tweet Activity
+
+```{r daily_tweets}
+
+daily_tweets <- tweets_df %>% 
+  group_by(date) %>% 
+  summarise(tweets = n(), impressions = sum(impressions, na.rm = T),
+            engagements = sum(engagements, na.rm = T),
+            eng_rate = round(engagements / impressions, digits = 2))
+```
+
+
+```{r daily_tweet_plot}
+daily_tweets_plot <- ggplot(daily_tweets, aes(as.Date(date), 
+                           tweets, fill = wday(as.Date(date), label = T))) +
+  geom_bar(stat = "identity") +
+  scale_x_date(date_labels = "%b %d") +
+  scale_fill_viridis(discrete = T, name = NULL) +
+  labs(x = NULL, y = "Tweets")
+daily_tweets_plot
+```
+
+## Hourly Tweet Activity
+
+```{r hourly_tweet_plot}
+hourly <- tweets_df %>% 
+  group_by(hour = hour(date)) %>% 
+  summarise(tweets = n())
+
+hourly_tweet_plot <- ggplot(hourly, aes(hour, tweets)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = tweets), col = "white", vjust = 1.2) +
+  scale_x_continuous(breaks = seq(0,23,1))
+hourly_tweet_plot
+
+```
+
+## Followers From Tweets
+
+```{r followers_from_tweets}
+tweets_df %>% select(`Tweet text`, follows, `promoted follows`) %>% 
+  arrange(desc(follows)) %>% 
+  datatable(options = list(dom = "tpli")) %>% 
+  formatCurrency(columns = 2:3, digits = 0, currency = "")
+```
+
+## Most Used Words - absolute and weighted frequency
+
+```{r word_freq, warning=FALSE}
+tweets_freq <- word_frequency(tweets_df[c(3,5)], rm_words = stopwords_en)
+
+datatable(tweets_freq, filter = "top", extensions = "Scroller",
+          colnames = c("tweet" = "text", "impressions" = "original_metric"), 
+          options = list(scroller =T, scrollY = 350, scrollX = 1000, dom = "ltip")) %>% 
+  formatCurrency(columns = c(2,3,7), currency = "", digits = 0) %>% 
+  formatPercentage(columns = 4:5, digits = 1)
+```
+
+- **abs_freq:** the absolute number of times this word was used
+- **wtd_freq:** `abs_freq` * impressions of the tweets where this word was used (weighted frequency)
+- **cum_perc:** cumulative percentage of `wtd_freq`
+- **perc:** percenage occurences of this word in all tweets
+
+
+```{r content_analysis}
+my_words <- params$words
+tweets_hashtag <- twtr_get_hashtags(tweets_df$`Tweet text`)
+tweets_mention <- twtr_get_mentions(tweets_df$`Tweet text`)
+tweets_url <- twtr_get_urls(tweets_df$`Tweet text`)
+tweets_word <- twtr_get_words(tweets_df$`Tweet text`,words = my_words)
+```
+
+## Hashtag Summary
+
+```{r hashtag_summary, fig.height=4}
+datatable(tweets_hashtag$hashtag_summary, rownames = F, 
+          options = list(dom = "t"), width = "60%") %>% 
+  formatCurrency(columns = T, currency = "", digits = c(0, 0, 0, 2))
+
+ggplot(tweets_hashtag$hash_freq, aes(hash_count, Freq)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Freq), vjust = 1.2, col = "white", size = 7)
+```
+
+## Top Hashtags
+
+```{r top_hashtags}
+datatable(tweets_hashtag$top_hashtags, rownames = F, width = "60%", filter = "top", 
+          extensions = "Scroller", 
+          options = list(dom = "ti", scroller = T, scrollY = 350))
+```
+
+## Mention Summary
+
+```{r mention_summary}
+datatable(tweets_mention$mention_summary, rownames = F, 
+          options = list(dom = "t"), width = "60%") %>% 
+  formatCurrency(columns = T, currency = "", digits = c(0, 0, 0, 2))
+
+ggplot(tweets_mention$mention_freq, aes(mention_count, Freq)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Freq), vjust = 1.2, col = "white", size = 7)
+```
+
+## Top Mentions
+
+```{r top_mentions}
+datatable(tweets_mention$top_mentions, rownames = F, width = "60%", filter = "top",
+          options = list(dom = "tilp")) %>%
+  formatCurrency(columns = T, currency = "", digits = 0)
+```
+
+* Does not include mentions in rewteets, only "proactive" mentions
+
+## Keywords
+
+```{r keywords_table}
+
+datatable(as.data.frame(my_words), options = list(dom = ""), width = "35%")
+```
+
+## Word Summary
+
+```{r word_summary}
+datatable(tweets_word$word_summary, rownames = F, options = list(dom = "t"),
+          width = "60%") %>% 
+  formatCurrency(columns = T, currency = "", digits = c(0, 0, 0, 2))
+
+ggplot(tweets_word$word_freq, aes(word_count, Freq)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Freq), vjust = 1.2, col = "white", size = 7)
+
+
+```
+
+## Top Words
+
+```{r top_words}
+datatable(tweets_word$top_words, rownames = F, width = "60%", filter = "top",
+          options = list(dom = "tilp")) %>% 
+  formatCurrency(columns = T, currency = "", digits = 0)
+```
+
