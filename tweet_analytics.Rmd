@@ -14,7 +14,6 @@ params:
 library(knitr)
 library(readr)
 library(dplyr)
-library(tidyr)
 library(lubridate)
 library(ggplot2)
 library(advertools)
@@ -24,7 +23,6 @@ knitr::opts_chunk$set(echo = FALSE, fig.width = 13,
                       fig.height = 5, fig.align = "center")
 
 tweets_df <- read_csv(params$file)
-#tweets_df <- read_csv("~/Downloads/sna_tweets_mayjunjul.csv")
 #tweets_df$`Tweet text` <- iconv(tweets_df$`Tweet text`, "ASCII", "UTF-8", "byte")
 tweets_df$date <- as.POSIXct(gsub(" \\+0000", "", tweets_df$time))
 tweets_df$month <- month(as.Date(tweets_df$time), label = TRUE)
