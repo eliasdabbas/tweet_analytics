@@ -72,3 +72,17 @@ viridis         | 0.3.4
 (a) tweet activity: daily, monthly, day of week, and hourly
 (b) word usage: all the words that are used, weighted and absolute frequency, together with the target words of your choice
 (c) hashtags and mentions: count, frequency, and the top ones that you are using
+
+4. Encoding might be an issue especially with emoticons, and if you are using different languages. A quick fix that works for English, is a line that converts the encoding of the tweets text. This is in the fist chunk, and you will simply have to uncomment the line  
+#tweets_df$`Tweet text` <- iconv(tweets_df$`Tweet text`, "ASCII", "UTF-8", "byte")  
+Sorry I'm not an expert on encoding and how you can solve these issues! 
+
+
+
+
+
+
+
+
+
+

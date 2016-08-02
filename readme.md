@@ -64,10 +64,15 @@ Based on this, you can take action in terms of refocusing your content, and maki
 | DT         | 0.1.64    |                                                      |
 | viridis    | 0.3.4     |
 
-1.  This document is meant to be a starting point in your analysis of your tweet activity. There are more than forty columns, and the possible combinations are endless. I have chosen the main metrics that give a good overview of:
+1.  This document is meant to be a starting point in your analysis of your tweet activity. There are more than forty columns, and the possible combinations are endless. I have chosen the main metrics that give an overview of:
 
 <!-- -->
 
 1.  tweet activity: daily, monthly, day of week, and hourly
 2.  word usage: all the words that are used, weighted and absolute frequency, together with the target words of your choice
 3.  hashtags and mentions: count, frequency, and the top ones that you are using
+
+<!-- -->
+
+1.  Encoding might be an issue especially with emoticons, and if you are using different languages. A quick fix that works for English, is a line that converts the encoding of the tweets text. This is in the fist chunk, and you will simply have to uncomment the line
+    \#tweets\_df$\`Tweet text\` &lt;- iconv(tweets\_df$`Tweet text`, "ASCII", "UTF-8", "byte")
